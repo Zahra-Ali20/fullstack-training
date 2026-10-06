@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ProductList from './components/ProductList'
 import ProductDetails from './components/ProductDetails'
+import ProductStats from './components/ProductStats'
 
 function App() {
   const products = [
@@ -45,7 +46,15 @@ function App() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [showInStockOnly, setShowInStockOnly] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [sortOrder, setSortOrder] = useState("default")
 
+  const clearFilters = () => {
+  setSearchTerm("")
+  setSelectedCategory("All")
+  setShowInStockOnly(false)
+  setSortOrder("default")
+  setSelectedProduct(null)
+}
   console.log("SELECTED PRODUCT:", selectedProduct)
 
   const filteredProducts = products.filter((product) => {
@@ -61,10 +70,20 @@ function App() {
 
     return matchesSearch && matchesCategory && matchesStock
   })
+  const sortedProducts = [...filteredProducts]
+  if (sortOrder === "lowToHigh") {
+  sortedProducts.sort((a, b) => a.price - b.price)
+}
+
+if (sortOrder === "highToLow") {
+  sortedProducts.sort((a, b) => b.price - a.price)
+}
+
 
   return (
     <div>
       <h1>Product Manager</h1>
+      <ProductStats products={products} />
 
       <input
         type="text"
@@ -82,6 +101,14 @@ function App() {
         <option value="Kitchen">Kitchen</option>
         <option value="Accessories">Accessories</option>
       </select>
+      <select
+  value={sortOrder}
+  onChange={(e) => setSortOrder(e.target.value)}
+>
+  <option value="default">Default</option>
+  <option value="lowToHigh">Price: Low to High</option>
+  <option value="highToLow">Price: High to Low</option>
+</select>
 
       <label>
         <input
@@ -91,12 +118,16 @@ function App() {
         />
         Show in-stock products only
       </label>
-
+  
+  
+   <button onClick={clearFilters}>
+      Clear Filters
+  </button>
       {filteredProducts.length === 0 ? (
         <p>No products found.</p>
       ) : (
         <ProductList
-          products={filteredProducts}
+          products={sortedProducts}
           onSelectProduct={setSelectedProduct}
         />
       )}

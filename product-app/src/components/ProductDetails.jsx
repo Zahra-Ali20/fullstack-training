@@ -1,14 +1,21 @@
 function ProductDetails({ product }) {
+
   if (!product) {
-    return <p>Select a product to view details.</p>
+    return (
+      <div>
+        <h2>Selected Product</h2>
+        <p>Select a product to view details.</p>
+      </div>
+    )
   }
 
   return (
     <div>
-      <h2>{product.name}</h2>
+      <h2>Selected Product</h2>
+      <h3>{product.name}</h3>
       <p>Price: ${product.price}</p>
       <p>Category: {product.category}</p>
-      <p>{product.inStock ? "In Stock" : "Out of Stock"}</p>
+      <p>Status: {product.inStock ? "In Stock" : "Out of Stock"}</p>
     </div>
   )
 }
