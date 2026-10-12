@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const AppError = require("../utils/AppError");
 const getProducts = async (req, res, next) => {
 try {
 const category = req.query.category;
@@ -56,11 +57,8 @@ const [rows] = await pool.query(
 );
 
 if (rows.length === 0) {
-  return res.status(404).json({
-    error: "Product not found",
-  });
+  return next(new AppError("Product not found", 404));
 }
-
 res.status(200).json(rows[0]);
 } catch (error) {
 next(error);
@@ -119,11 +117,8 @@ const [rows] = await pool.query(
   "SELECT * FROM products WHERE id = ?",
   [id]
 );
-
 if (rows.length === 0) {
-  return res.status(404).json({
-    error: "Product not found",
-  });
+  return next(new AppError("Product not found", 404));
 }
 
 await pool.query(
@@ -160,9 +155,7 @@ const [rows] = await pool.query(
 );
 
 if (rows.length === 0) {
-  return res.status(404).json({
-    error: "Product not found",
-  });
+  return next(new AppError("Product not found", 404));
 }
 
 await pool.query(
