@@ -1,0 +1,6 @@
+Examples of files that normally should not be committed:
+
+node_modules/
+.env
+.DS_Store
+dist/
