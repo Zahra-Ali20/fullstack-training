@@ -1,0 +1,11 @@
+body {
+  margin: 0;
+}
+
+.in-stock {
+  color: green;
+}
+
+.out-of-stock {
+  color: red;
+}
