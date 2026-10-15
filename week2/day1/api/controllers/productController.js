@@ -1,173 +1,117 @@
-const pool = require("../config/db");
 const AppError = require("../utils/AppError");
+const productService = require("../services/productService");
+
 const getProducts = async (req, res, next) => {
-try {
-const category = req.query.category;
-let rows;
-if (category) {
-  const [products] = await pool.query(
-    `SELECT
-      id,
-      name,
-      price,
-      category,
-      in_stock AS inStock,
-      created_at AS createdAt
-    FROM products
-    WHERE LOWER(category) = LOWER(?)`,
-    [category]
-  );
+  try {
+    const category = req.query.category;
 
-  rows = products;
-} else {
-  const [products] = await pool.query(
-    `SELECT
-      id,
-      name,
-      price,
-      category,
-      in_stock AS inStock,
-      created_at AS createdAt
-    FROM products`
-  );
+    const products = await productService.getAllProducts(category);
 
-  rows = products;
-}
-
-res.status(200).json(rows);
-} catch (error) {
-next(error);
-}
+    return res.status(200).json(products);
+  } catch (error) {
+    next(error);
+  }
 };
+
+
 
 const getProductById = async (req, res, next) => {
-try {
-const id = Number(req.params.id);
-const [rows] = await pool.query(
-  `SELECT
-    id,
-    name,
-    price,
-    category,
-    in_stock AS inStock,
-    created_at AS createdAt
-  FROM products
-  WHERE id = ?`,
-  [id]
-);
+  try {
+    const id = Number(req.params.id);
 
-if (rows.length === 0) {
-  return next(new AppError("Product not found", 404));
-}
-res.status(200).json(rows[0]);
-} catch (error) {
-next(error);
-}
-};
+    const product = await productService.getProductById(id);
 
-const createProduct= async(req, res,next) => {
-  const { name, price, category, inStock } = req.body;
-  if (!name) {
-  return res.status(400).json({
-    error: "Name is required"
-  });
-}
+    if (!product) {
+      return next(new AppError("Product not found", 404));
+    }
 
-
-if (price === undefined || price === null || price === "") {
-  return res.status(400).json({
-    error: "Price is required"
-  });
-}
-
-if (typeof price !== "number" || !Number.isFinite(price) || price < 0) {
-  return res.status(400).json({
-    error: "Price must be a valid non-negative number"
-  });
-}
-
-if (!category) {
-  return res.status(400).json({
-    error: "Category is required"
-  });
-}
-try {
-  const [result] = await pool.query(
-    "INSERT INTO products (name, price, category, in_stock) VALUES (?, ?, ?, ?)",
-    [name, price, category, inStock]
-  );
-  const newProduct = {
-  id: result.insertId,
-  name,
-  price,
-  category,
-  inStock
-};
-
-return res.status(201).json(newProduct);
-  } 
-   catch (error) {
+    return res.status(200).json(product);
+  } catch (error) {
     next(error);
-  }};
+  }
+};
+
+
+const createProduct = async (req, res, next) => {
+  try {
+    const { name, price, category, inStock } = req.body;
+
+    if (!name) {
+      throw new AppError("Name is required", 400);
+    }
+
+    if (price === undefined || price === null || price === "") {
+      throw new AppError("Price is required", 400);
+    }
+
+    if (
+      typeof price !== "number" ||
+      !Number.isFinite(price) ||
+      price < 0
+    ) {
+      throw new AppError(
+        "Price must be a valid non-negative number",
+        400
+      );
+    }
+
+    if (!category) {
+      throw new AppError("Category is required", 400);
+    }
+
+    const newProduct = await productService.createProduct({
+      name,
+      price,
+      category,
+      inStock,
+    });
+
+    return res.status(201).json(newProduct);
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 const updateProduct = async (req, res, next) => {
-try {
-const id = Number(req.params.id);
-const { name, price, category, inStock } = req.body;
-const [rows] = await pool.query(
-  "SELECT * FROM products WHERE id = ?",
-  [id]
-);
-if (rows.length === 0) {
-  return next(new AppError("Product not found", 404));
-}
+  try {
+    const id = Number(req.params.id);
+    const { name, price, category, inStock } = req.body;
 
-await pool.query(
-  `UPDATE products
-   SET name = ?, price = ?, category = ?, in_stock = ?
-   WHERE id = ?`,
-  [name, price, category, inStock, id]
-);
+    const updatedProduct = await productService.updateProduct(id, {
+      name,
+      price,
+      category,
+      inStock,
+    });
 
-const [updatedRows] = await pool.query(
-  `SELECT
-    id,
-    name,
-    price,
-    category,
-    in_stock AS inStock,
-    created_at AS createdAt
-   FROM products
-   WHERE id = ?`,
-  [id]
-);
+    if (!updatedProduct) {
+      throw new AppError("Product not found", 404);
+    }
 
-return res.status(200).json(updatedRows[0]);
-} catch (error) {
-next(error);
-}
+    return res.status(200).json(updatedProduct);
+  } catch (error) {
+    next(error);
+  }
 };
+
+
 const deleteProduct = async (req, res, next) => {
-try {
-const id = Number(req.params.id);
-const [rows] = await pool.query(
-  "SELECT * FROM products WHERE id = ?",
-  [id]
-);
+  try {
+    const id = Number(req.params.id);
 
-if (rows.length === 0) {
-  return next(new AppError("Product not found", 404));
-}
+    const deleted = await productService.deleteProduct(id);
 
-await pool.query(
-  "DELETE FROM products WHERE id = ?",
-  [id]
-);
+    if (!deleted) {
+      throw new AppError("Product not found", 404);
+    }
 
-return res.status(204).send();
-} catch (error) {
-next(error);
-}
+    return res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
 };
+
 module.exports = {
   getProducts,
   getProductById,
