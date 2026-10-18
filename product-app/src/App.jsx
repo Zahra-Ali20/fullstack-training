@@ -1,11 +1,17 @@
-import { useState,useMemo,useCallback,useRef } from 'react'
+import { useState,useMemo,useCallback,useRef,useEffect} from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchProducts } from './features/products/productsSlice'
 import ProductList from './components/ProductList'
 import ProductDetails from './components/ProductDetails'
 import ProductStats from './components/ProductStats'
-import useProducts from './hooks/useProducts'
-
+import Cart from './components/Cart'
+import CartSummary from './components/CartSummary'
 function App() {
-  const { products, loading, error,retry } = useProducts()
+
+  const dispatch = useDispatch()
+  const products = useSelector((state) => state.products.items)
+  const status = useSelector((state) => state.products.status)
+  const error = useSelector((state) => state.products.error)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [showInStockOnly, setShowInStockOnly] = useState(false)
@@ -15,6 +21,9 @@ function App() {
  const handleProductClick = useCallback((product) => {
   setSelectedProduct(product)
 }, [])
+useEffect(() => {
+  dispatch(fetchProducts())
+}, [dispatch])
   const clearFilters = () => {
     setSearchTerm("")
     setSelectedCategory("All")
@@ -31,9 +40,8 @@ function App() {
       const matchesCategory =
         selectedCategory === "All" ||
         product.category === selectedCategory
-
       const matchesStock =
-        !showInStockOnly || Boolean(product.inStock)
+     !showInStockOnly || Number(product.inStock) === 1
 
       return matchesSearch && matchesCategory && matchesStock
     })
@@ -54,7 +62,7 @@ function App() {
     showInStockOnly,
     sortOrder
   ])
-  if (loading) {
+  if (status === 'loading') {
     return (
       <div>
         <h1>Product Manager</h1>
@@ -62,17 +70,22 @@ function App() {
       </div>
     )
   }
-  if (error) {
+  if (status === 'failed') {
     return (
       <div>
         <h1>Product Manager</h1>
         <p>Error: {error}</p>
-         <button onClick={retry}>Retry</button>
+         <button onClick={() => dispatch(fetchProducts())}>Retry</button>
       </div>
     )
   }
   return (
+
     <div>
+      <div style={{ position: 'absolute', top: '20px', right: '20px', width: '300px' }}>
+  <Cart />
+  <CartSummary />
+</div>
       <h1>Product Manager</h1>
       <ProductStats products={products} />
       <input
