@@ -6,6 +6,7 @@ import ProductDetails from './components/ProductDetails'
 import ProductStats from './components/ProductStats'
 import Cart from './components/Cart'
 import CartSummary from './components/CartSummary'
+import CreateProductForm from './components/CreateProductForm'
 function App() {
 
   const dispatch = useDispatch()
@@ -21,6 +22,7 @@ function App() {
  const handleProductClick = useCallback((product) => {
   setSelectedProduct(product)
 }, [])
+
 useEffect(() => {
   dispatch(fetchProducts())
 }, [dispatch])
@@ -82,6 +84,7 @@ useEffect(() => {
   return (
 
     <div>
+      <CreateProductForm />
       <div style={{ position: 'absolute', top: '20px', right: '20px', width: '300px' }}>
   <Cart />
   <CartSummary />
@@ -139,5 +142,6 @@ useEffect(() => {
       <ProductDetails product={selectedProduct} />
     </div>
   )
+
 }
 export default App;
