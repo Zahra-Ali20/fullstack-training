@@ -1,13 +1,16 @@
 
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { createProduct } from '../features/products/productsSlice'
 import { validateProductForm } from '../utils/productValidation'
+import { useNavigate } from 'react-router-dom'
+import {
+  createProduct,
+  updateProduct
+} from '../features/products/productsSlice'
 
-
-
-function CreateProductForm() {
+function CreateProductForm({ product = null }) {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
 
   const createStatus = useSelector(
     (state) => state.products.createStatus
@@ -21,14 +24,33 @@ function CreateProductForm() {
     (state) => state.products.createFieldErrors
   )
 
-  const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    category: '',
-    inStock: true
-  })
+  const updateStatus = useSelector(
+    (state) => state.products.updateStatus
+  )
+
+  const updateError = useSelector(
+    (state) => state.products.updateError
+  )
+
+  const updateFieldErrors = useSelector(
+    (state) => state.products.updateFieldErrors
+  )
+
+  const [formData, setFormData] = useState(() => ({
+    name: product?.name ?? '',
+    price: product?.price ?? '',
+    category: product?.category ?? '',
+    inStock: Number(product?.inStock) === 1
+  }))
 
   const [errors, setErrors] = useState({})
+
+  const fieldErrors = product
+    ? updateFieldErrors
+    : createFieldErrors
+
+  const status = product ? updateStatus : createStatus
+  const apiError = product ? updateError : createError
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target
@@ -39,10 +61,11 @@ function CreateProductForm() {
     }))
 
     setErrors((previousErrors) => {
-      const { general, ...fieldErrors } = previousErrors
+      const remainingErrors = { ...previousErrors }
+      delete remainingErrors.general
 
       return {
-        ...fieldErrors,
+        ...remainingErrors,
         [name]: ''
       }
     })
@@ -66,31 +89,42 @@ function CreateProductForm() {
     }
 
     try {
-      await dispatch(createProduct(cleanedFormData)).unwrap()
-
-      setFormData({
-        name: '',
-        price: '',
-        category: '',
-        inStock: true
-      })
+      if (product) {
+        await dispatch(
+          updateProduct({
+            id: product.id,
+            productData: cleanedFormData
+          })
+        ).unwrap()
+      } else {
+        await dispatch(
+          createProduct(cleanedFormData)
+        ).unwrap()
+      }
 
       setErrors({})
+      navigate('/')
     } catch {
+      // Redux stores backend errors for the form to display.
     }
   }
 
   return (
     <div>
-      <h2>Create Product</h2>
+      <h2>{product ? 'Edit Product' : 'Create Product'}</h2>
 
-      {createStatus === 'succeeded' && (
+      {!product && createStatus === 'succeeded' && (
         <p role="status">Product created successfully.</p>
       )}
 
-      {(errors.general || createError) && (
+      {(errors.general || apiError) && (
         <p role="alert">
-          {errors.general || createError}
+          {errors.general ||
+            (typeof apiError === 'string'
+              ? apiError
+              : apiError?.message ||
+                apiError?.error ||
+                `Unable to ${product ? 'update' : 'create'} product. Please try again.`)}
         </p>
       )}
 
@@ -105,18 +139,18 @@ function CreateProductForm() {
             value={formData.name}
             onChange={handleChange}
             aria-invalid={Boolean(
-              errors.name || createFieldErrors.name
+              errors.name || fieldErrors.name
             )}
             aria-describedby={
-              errors.name || createFieldErrors.name
+              errors.name || fieldErrors.name
                 ? 'product-name-error'
                 : undefined
             }
           />
 
-          {(errors.name || createFieldErrors.name) && (
+          {(errors.name || fieldErrors.name) && (
             <p id="product-name-error" role="alert">
-              {errors.name || createFieldErrors.name}
+              {errors.name || fieldErrors.name}
             </p>
           )}
         </div>
@@ -131,18 +165,18 @@ function CreateProductForm() {
             value={formData.price}
             onChange={handleChange}
             aria-invalid={Boolean(
-              errors.price || createFieldErrors.price
+              errors.price || fieldErrors.price
             )}
             aria-describedby={
-              errors.price || createFieldErrors.price
+              errors.price || fieldErrors.price
                 ? 'product-price-error'
                 : undefined
             }
           />
 
-          {(errors.price || createFieldErrors.price) && (
+          {(errors.price || fieldErrors.price) && (
             <p id="product-price-error" role="alert">
-              {errors.price || createFieldErrors.price}
+              {errors.price || fieldErrors.price}
             </p>
           )}
         </div>
@@ -156,10 +190,10 @@ function CreateProductForm() {
             value={formData.category}
             onChange={handleChange}
             aria-invalid={Boolean(
-              errors.category || createFieldErrors.category
+              errors.category || fieldErrors.category
             )}
             aria-describedby={
-              errors.category || createFieldErrors.category
+              errors.category || fieldErrors.category
                 ? 'product-category-error'
                 : undefined
             }
@@ -172,9 +206,9 @@ function CreateProductForm() {
             <option value="Test">Test</option>
           </select>
 
-          {(errors.category || createFieldErrors.category) && (
+          {(errors.category || fieldErrors.category) && (
             <p id="product-category-error" role="alert">
-              {errors.category || createFieldErrors.category}
+              {errors.category || fieldErrors.category}
             </p>
           )}
         </div>
@@ -193,11 +227,13 @@ function CreateProductForm() {
 
         <button
           type="submit"
-          disabled={createStatus === 'loading'}
+          disabled={status === 'loading'}
         >
-          {createStatus === 'loading'
+          {status === 'loading'
             ? 'Saving...'
-            : 'Create Product'}
+            : product
+              ? 'Update Product'
+              : 'Create Product'}
         </button>
       </form>
     </div>

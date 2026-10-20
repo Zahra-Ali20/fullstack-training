@@ -11,7 +11,7 @@ export function validateProductForm(formData) {
     newErrors.name = 'Name cannot exceed 100 characters'
   }
 
-  const priceInput = formData.price.trim()
+  const priceInput = String(formData.price ?? '').trim()
   const numericPrice = Number(priceInput)
 
   if (priceInput === '') {
