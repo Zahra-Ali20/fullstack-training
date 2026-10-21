@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom'
 
 function Header() {
@@ -7,6 +8,10 @@ function Header() {
         <Link to="/">Products</Link>
         {' | '}
         <Link to="/products/new">Create Product</Link>
+        {' | '}
+        <Link to="/tasks">Tasks</Link>
+        {' | '}
+        <Link to="/tasks/new">Create Task</Link>
         {' | '}
         <Link to="/cart">Cart Summary</Link>
       </nav>
