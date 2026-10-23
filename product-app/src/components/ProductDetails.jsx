@@ -1,5 +1,5 @@
 
-function ProductDetails({ product, onEdit, onDelete,isDeleting }) {
+function ProductDetails({ product, onEdit, onDelete, isDeleting }) {
   if (!product) {
     return <p>Select a product to view details.</p>
   }
@@ -18,16 +18,21 @@ function ProductDetails({ product, onEdit, onDelete,isDeleting }) {
         Stock Status: {isInStock ? 'In Stock' : 'Out of Stock'}
       </p>
 
-      <button onClick={() => onEdit(product)}>
-        Edit
-      </button>
+      {onEdit && (
+        <button type="button" onClick={() => onEdit(product)}>
+          Edit
+        </button>
+      )}
 
-      <button
-      onClick={() => onDelete(product.id)}
-      disabled={isDeleting}
-      >
-     {isDeleting ? 'Deleting...' : 'Delete'}
-      </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={() => onDelete(product.id)}
+          disabled={isDeleting}
+        >
+          {isDeleting ? 'Deleting...' : 'Delete'}
+        </button>
+      )}
     </div>
   )
 }

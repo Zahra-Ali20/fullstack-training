@@ -1,36 +1,50 @@
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import { apiRequest } from '../../utils/api'
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/products`
-
-const normalizeApiError = (data, fallback) => {
+const normalizeApiError = (data, fallback, status = null) => {
   const errors = Array.isArray(data?.errors)
     ? data.errors
     : []
 
+  let message =
+    data?.message ??
+    data?.error ??
+    (errors.length > 0 ? null : fallback)
+
+  if (status === 403) {
+    message = 'You do not have permission to perform this action.'
+  }
+
   return {
-    message:
-      data?.message ??
-      data?.error ??
-      (errors.length > 0 ? null : fallback),
+    message,
     errors
   }
 }
 
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
     try {
-      const response = await fetch(API_URL)
+      const token = getState().auth.token
+
+      const response = await apiRequest('/products', { token })
+      const data = await response.json().catch(() => null)
 
       if (!response.ok) {
-        throw new Error()
+        return rejectWithValue(
+          response.status === 403
+            ? 'You do not have permission to perform this action.'
+            : data?.message ||
+                data?.error ||
+                'Unable to load products. Please try again.'
+        )
       }
 
-      return await response.json()
+      return data
     } catch {
       return rejectWithValue(
-        'Unable to load products. Please check your connection and try again.'
+        'Unable to connect to the server. Please check your connection and try again.'
       )
     }
   }
@@ -38,13 +52,14 @@ export const fetchProducts = createAsyncThunk(
 
 export const createProduct = createAsyncThunk(
   'products/createProduct',
-  async (productData, { rejectWithValue }) => {
+  async (productData, { rejectWithValue, getState }) => {
     try {
-      const response = await fetch(API_URL, {
+      const token = getState().auth.token
+
+      const response = await apiRequest('/products', {
+        token,
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...productData,
           price: Number(productData.price)
@@ -58,7 +73,8 @@ export const createProduct = createAsyncThunk(
           status: response.status,
           ...normalizeApiError(
             data,
-            'Unable to create product. Please try again.'
+            'Unable to create product. Please try again.',
+            response.status
           )
         })
       }
@@ -78,13 +94,14 @@ export const createProduct = createAsyncThunk(
 
 export const updateProduct = createAsyncThunk(
   'products/updateProduct',
-  async ({ id, productData }, { rejectWithValue }) => {
+  async ({ id, productData }, { rejectWithValue, getState }) => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
+      const token = getState().auth.token
+
+      const response = await apiRequest(`/products/${id}`, {
+        token,
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...productData,
           price: Number(productData.price)
@@ -98,7 +115,8 @@ export const updateProduct = createAsyncThunk(
           status: response.status,
           ...normalizeApiError(
             data,
-            'Unable to update product. Please try again.'
+            'Unable to update product. Please try again.',
+            response.status
           )
         })
       }
@@ -118,9 +136,12 @@ export const updateProduct = createAsyncThunk(
 
 export const deleteProduct = createAsyncThunk(
   'products/deleteProduct',
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, getState }) => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
+      const token = getState().auth.token
+
+      const response = await apiRequest(`/products/${id}`, {
+        token,
         method: 'DELETE'
       })
 
@@ -131,7 +152,8 @@ export const deleteProduct = createAsyncThunk(
           status: response.status,
           ...normalizeApiError(
             data,
-            'Unable to delete product. Please try again.'
+            'Unable to delete product. Please try again.',
+            response.status
           )
         })
       }
@@ -203,7 +225,6 @@ const productsSlice = createSlice({
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.createStatus = 'failed'
-
         const payload = action.payload
 
         state.createFieldErrors = Object.fromEntries(
@@ -247,15 +268,15 @@ const productsSlice = createSlice({
       })
       .addCase(updateProduct.rejected, (state, action) => {
         state.updateStatus = 'failed'
-
         const payload = action.payload
 
         state.updateErrorStatus = payload?.status ?? null
 
-        const errors = payload?.errors ?? []
-
         state.updateFieldErrors = Object.fromEntries(
-          errors.map(({ field, message }) => [field, message])
+          (payload?.errors ?? []).map(({ field, message }) => [
+            field,
+            message
+          ])
         )
 
         state.updateError =
@@ -284,7 +305,6 @@ const productsSlice = createSlice({
       })
       .addCase(deleteProduct.rejected, (state, action) => {
         state.deleteStatus = 'failed'
-
         state.deleteErrorStatus = action.payload?.status ?? null
 
         state.deleteError =
