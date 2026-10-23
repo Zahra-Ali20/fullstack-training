@@ -4,11 +4,14 @@ import { configureStore } from '@reduxjs/toolkit'
 import productsReducer from '../features/products/productsSlice'
 import cartReducer from '../features/cart/cartSlice'
 import tasksReducer from '../features/tasks/tasksSlice'
+import authReducer from '../features/auth/authSlice'
 export const store = configureStore({
   reducer: {
     products: productsReducer,
     cart: cartReducer,
-    tasks: tasksReducer
+    tasks: tasksReducer,
+    auth: authReducer
+
   }
 })
 
