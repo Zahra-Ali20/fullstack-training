@@ -1,7 +1,6 @@
 
+import { tasksApiRequest } from '../../utils/api'
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-
-const API_URL = `${import.meta.env.VITE_TASKS_API_BASE_URL}/tasks`
 
 const normalizeApiError = (data, fallback) => {
   const errors = Array.isArray(data?.errors)
@@ -17,12 +16,11 @@ const normalizeApiError = (data, fallback) => {
   }
 }
 
-
 export const fetchTasks = createAsyncThunk(
   'tasks/fetchTasks',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch(API_URL)
+      const response = await tasksApiRequest('/tasks')
       const data = await response.json().catch(() => null)
 
       if (!response.ok) {
@@ -42,12 +40,11 @@ export const fetchTasks = createAsyncThunk(
   }
 )
 
-
 export const createTask = createAsyncThunk(
   'tasks/createTask',
   async (taskData, { rejectWithValue }) => {
     try {
-      const response = await fetch(API_URL, {
+      const response = await tasksApiRequest('/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -69,7 +66,7 @@ export const createTask = createAsyncThunk(
 
       const taskId = data.taskId
 
-      const taskResponse = await fetch(`${API_URL}/${taskId}`)
+      const taskResponse = await tasksApiRequest(`/tasks/${taskId}`)
 
       if (!taskResponse.ok) {
         return rejectWithValue({
@@ -96,7 +93,7 @@ export const updateTask = createAsyncThunk(
   'tasks/updateTask',
   async ({ id, ...taskData }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
+      const response = await tasksApiRequest(`/tasks/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -125,7 +122,7 @@ export const updateTask = createAsyncThunk(
         return data
       }
 
-      const taskResponse = await fetch(`${API_URL}/${id}`)
+      const taskResponse = await tasksApiRequest(`/tasks/${id}`)
 
       if (!taskResponse.ok) {
         return rejectWithValue({
@@ -149,12 +146,11 @@ export const updateTask = createAsyncThunk(
   }
 )
 
-
 export const deleteTask = createAsyncThunk(
   'tasks/deleteTask',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
+      const response = await tasksApiRequest(`/tasks/${id}`, {
         method: 'DELETE'
       })
 
@@ -201,18 +197,14 @@ export const deleteTask = createAsyncThunk(
 
 const initialState = {
   items: [],
-
   status: 'idle',
   error: null,
-
   createStatus: 'idle',
   createError: null,
   createFieldErrors: {},
-
   updateStatus: 'idle',
   updateError: null,
   updateFieldErrors: {},
-
   deleteStatus: 'idle',
   deleteError: null
 }
@@ -224,40 +216,31 @@ const tasksSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-
       .addCase(fetchTasks.pending, (state) => {
         state.status = 'loading'
         state.error = null
       })
-
       .addCase(fetchTasks.fulfilled, (state, action) => {
         state.status = 'succeeded'
         state.items = action.payload
       })
-
       .addCase(fetchTasks.rejected, (state, action) => {
         state.status = 'failed'
-        state.error =
-          action.payload ?? action.error.message
+        state.error = action.payload ?? action.error.message
       })
-
       .addCase(createTask.pending, (state) => {
         state.createStatus = 'loading'
         state.createError = null
         state.createFieldErrors = {}
       })
-
       .addCase(createTask.fulfilled, (state, action) => {
         state.createStatus = 'succeeded'
         state.createError = null
         state.createFieldErrors = {}
-
         state.items.push(action.payload)
       })
-
       .addCase(createTask.rejected, (state, action) => {
         state.createStatus = 'failed'
-
         const payload = action.payload
 
         state.createFieldErrors = Object.fromEntries(
@@ -274,20 +257,17 @@ const tasksSlice = createSlice({
             : action.error.message ??
               'Unable to create task. Please try again.')
       })
-
       .addCase(updateTask.pending, (state) => {
         state.updateStatus = 'loading'
         state.updateError = null
         state.updateFieldErrors = {}
       })
-
       .addCase(updateTask.fulfilled, (state, action) => {
         state.updateStatus = 'succeeded'
         state.updateError = null
         state.updateFieldErrors = {}
 
         const updatedTask = action.payload
-
         const index = state.items.findIndex(
           (task) => String(task.id) === String(updatedTask.id)
         )
@@ -296,10 +276,8 @@ const tasksSlice = createSlice({
           state.items[index] = updatedTask
         }
       })
-
       .addCase(updateTask.rejected, (state, action) => {
         state.updateStatus = 'failed'
-
         const payload = action.payload
 
         state.updateFieldErrors = Object.fromEntries(
@@ -316,12 +294,10 @@ const tasksSlice = createSlice({
             : action.error.message ??
               'Unable to update task. Please try again.')
       })
-
       .addCase(deleteTask.pending, (state) => {
         state.deleteStatus = 'loading'
         state.deleteError = null
       })
-
       .addCase(deleteTask.fulfilled, (state, action) => {
         state.deleteStatus = 'succeeded'
         state.deleteError = null
@@ -330,10 +306,8 @@ const tasksSlice = createSlice({
           (task) => String(task.id) !== String(action.payload)
         )
       })
-
       .addCase(deleteTask.rejected, (state, action) => {
         state.deleteStatus = 'failed'
-
         const payload = action.payload
 
         state.deleteError =

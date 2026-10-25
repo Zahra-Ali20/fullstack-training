@@ -1,4 +1,3 @@
-
 const jwt = require("jsonwebtoken");
 const authService = require("../services/authService");
 
@@ -26,7 +25,7 @@ const register = async (req, res) => {
       });
     }
 
-    console.error("Registration error:", error);
+    console.error("Registration failed:", error.name || "Error");
 
     return res.status(500).json({
       message: "Internal server error",
@@ -69,7 +68,7 @@ const login = async (req, res) => {
       });
     }
 
-    console.error("Login error:", error);
+    console.error("Login failed:", error.name || "Error");
 
     return res.status(500).json({
       message: "Internal server error",

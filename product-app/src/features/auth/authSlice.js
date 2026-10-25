@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+import { apiRequest } from '../../utils/api'
 
-const API_URL = `${import.meta.env.VITE_API_BASE_URL}/auth/login`
 const AUTH_STORAGE_KEY = 'auth'
 
 const getStoredAuth = () => {
@@ -31,13 +31,13 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(credentials)
-      })
+      const response = await apiRequest('/auth/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(credentials)
+})
 
       const data = await response.json().catch(() => null)
 
