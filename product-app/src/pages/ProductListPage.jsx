@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
@@ -19,6 +20,7 @@ function ProductListPage() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [showInStockOnly, setShowInStockOnly] = useState(false)
   const [sortOrder, setSortOrder] = useState('default')
+
   const searchInputRef = useRef(null)
 
   const handleProductClick = useCallback((product) => {
@@ -63,7 +65,13 @@ function ProductListPage() {
     }
 
     return result
-  }, [products, searchTerm, selectedCategory, showInStockOnly, sortOrder])
+  }, [
+    products,
+    searchTerm,
+    selectedCategory,
+    showInStockOnly,
+    sortOrder,
+  ])
 
   if (status === 'loading') {
     return (
@@ -79,21 +87,29 @@ function ProductListPage() {
       <div>
         <h1>Product Manager</h1>
         <p>Error: {error}</p>
-        <button onClick={() => dispatch(fetchProducts())}>Retry</button>
+        <button onClick={() => dispatch(fetchProducts())}>
+          Retry
+        </button>
       </div>
     )
   }
 
   return (
     <div>
-
-
-      <div style={{ position: 'absolute', top: '20px', right: '20px', width: '300px' }}>
+      <div
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          width: '300px',
+        }}
+      >
         <Cart />
         <CartSummary />
       </div>
 
       <h1>Product Manager</h1>
+
       <ProductStats products={products} />
 
       <input
@@ -109,6 +125,7 @@ function ProductListPage() {
       </button>
 
       <select
+        aria-label="Filter by category"
         value={selectedCategory}
         onChange={(event) => setSelectedCategory(event.target.value)}
       >
@@ -121,6 +138,7 @@ function ProductListPage() {
       </select>
 
       <select
+        aria-label="Sort products"
         value={sortOrder}
         onChange={(event) => setSortOrder(event.target.value)}
       >
