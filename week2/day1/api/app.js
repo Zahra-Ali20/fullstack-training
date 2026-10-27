@@ -20,7 +20,11 @@ app.use(
 );
 
 app.use(express.json());
-
+app.get("/health", (req, res) => {
+  return res.status(200).json({
+    status: "ok",
+  });
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 
