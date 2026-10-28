@@ -1,3 +1,5 @@
+# Deployment Guide
+
 ## Part 46: Environment Configuration
 
 Configure environment variables separately for the backend runtime and frontend build. Never commit real credentials or secrets to Git.
@@ -19,9 +21,14 @@ These variables configure the backend APIs when they start in production.
 
 The Products/Auth API uses Sequelize, while the Tasks API currently uses `mysql2` with raw SQL queries. Configure the database variables according to each API's database configuration.
 
+Tickets are part of the Products/Auth API. They use the same backend runtime, database configuration, JWT authentication, and CORS configuration. A separate Tickets API server or port is not required.
+
 ### Frontend Build Variable
 
 - `VITE_API_BASE_URL` — Base URL used by the Vite frontend to communicate with the Products/Auth API. The local value is `http://localhost:3000/api`. Replace it with the deployed Products/Auth API URL when building for production.
+- `VITE_TASKS_API_BASE_URL` — Base URL used by the frontend to communicate with the Tasks API. Configure it with the deployed Tasks API URL before building for production.
+
+The Tickets frontend uses `VITE_API_BASE_URL` because the Tickets routes belong to the Products/Auth API.
 
 Vite exposes variables prefixed with `VITE_` to frontend code. Therefore, never put database passwords, `JWT_SECRET`, or other private secrets in frontend variables.
 
@@ -31,7 +38,9 @@ Vite exposes variables prefixed with `VITE_` to frontend code. Therefore, never 
 - Keep real `.env` files out of Git and deployment artifacts.
 - Use `.env.example` to document required variable names with safe placeholder values.
 - Set `FRONTEND_ORIGIN` to the actual deployed frontend origin instead of using wildcard CORS.
-- Configure `VITE_API_BASE_URL` before building the frontend because Vite embeds frontend environment values into the build.
+- Configure `VITE_API_BASE_URL` and `VITE_TASKS_API_BASE_URL` before building the frontend because Vite embeds frontend environment values into the build.
+- Keep the production JWT secret private and separate from local development secrets.
+- Ensure the production database contains the schema required by Products, authentication, Tasks, and Tickets.
 
 ## Part 47: Frontend Build
 
@@ -55,6 +64,8 @@ Deploy the contents of `dist/` to a static hosting provider. Do not deploy `node
 
 Before building, configure the required Vite environment variables, including `VITE_API_BASE_URL` and `VITE_TASKS_API_BASE_URL`, with the URLs of the deployed backend APIs. These values are embedded into the frontend build, so changing hosting environment variables later does not automatically update an existing build.
 
+The frontend build includes the Products, authentication, Tasks, and Tickets interfaces. The Tickets interface sends its requests to the Products/Auth API.
+
 ### React Router SPA Fallback
 
 The frontend uses React Router for client-side navigation, including routes such as `/products/:id` and `/tasks/:id`.
@@ -67,7 +78,16 @@ API requests must still be routed to their respective backend APIs and must not 
 
 ### Build Verification
 
-After running `npm run build`, verify that `product-app/dist/` exists and contains the generated production files. Test the deployed frontend by opening the main page, refreshing a product or task detail route, and confirming that API requests reach the correct backend.
+After running `npm run build`, verify that `product-app/dist/` exists and contains the generated production files.
+
+Test the deployed frontend by:
+
+- Opening the main page.
+- Refreshing a product or task detail route.
+- Opening the Tickets interface.
+- Confirming that ticket listing and detail requests reach the Products/Auth API.
+- Confirming that task requests reach the Tasks API.
+- Checking the browser console and Network panel for failed requests.
 
 ## Part 48: Backend Startup
 
@@ -85,6 +105,8 @@ node server.js
 ```
 
 The Products/Auth API runs on port `3000` according to the local project configuration.
+
+It handles product operations, authentication, and Tickets. Ticket routes are registered in the existing backend application and use its authentication middleware, database configuration, and error handling.
 
 ### Tasks API
 
@@ -105,6 +127,10 @@ Both backend `package.json` files currently define a `test` script but do not de
 
 For deployment, configure each backend hosting service to run its corresponding startup command. Ensure the required environment variables are configured before starting the application.
 
+Deploy the Products/Auth API with the Ticket routes, controllers, services, validators, models, and middleware included. Deploying only the frontend Tickets pages is insufficient because the backend is responsible for database operations and authorization.
+
+Verify that the deployed Products/Auth API can connect to the database and that the Ticket model's associations are configured correctly.
+
 ## Part 49: Database Configuration
 
 The application uses a MySQL database. In production, both backend APIs must receive their database connection settings through environment variables configured in the hosting provider.
@@ -121,10 +147,37 @@ Configure the following values for each backend according to its database config
 
 The Products/Auth API uses Sequelize for database connectivity and migrations. The Tasks API uses `mysql2` with a connection pool and raw SQL queries.
 
+Tickets use the Products/Auth API's database connection and Sequelize models. The production database must contain the Ticket table and the related user records expected by the application.
+
 ### SSL and Network Access
 
 - **SSL/TLS:** Enable SSL if required or recommended by the hosted MySQL provider, and follow its certificate configuration instructions.
 - **IP/network allowlisting:** If the provider restricts database access by IP address or network, allow connections from the deployed backend services. Do not expose the database publicly without appropriate access controls.
+
+### Tickets Schema and Associations
+
+The Ticket model includes the following fields:
+
+- `id`
+- `title`
+- `description`
+- `status`
+- `priority`
+- `created_by`
+- `assigned_to`
+
+The supported ticket statuses are `open`, `in_progress`, `resolved`, and `closed`. The supported priorities are `low`, `medium`, and `high`.
+
+The exact SQL types, nullability, defaults, timestamps, indexes, and foreign-key constraints must match the actual Ticket model and migration files in the repository.
+
+The Ticket model has two relationships with the User model:
+
+- **Creator:** Identifies the user who created the ticket.
+- **Assignee:** Identifies the user assigned to handle the ticket.
+
+The deployed database must contain valid user references for these relationships. The association aliases configured in the Sequelize models must match those used by the Ticket service.
+
+Before deploying Ticket-related changes, verify that the production schema matches the model and that the necessary migrations have been applied.
 
 ## Part 50: mysql2 and Sequelize
 
@@ -136,8 +189,9 @@ Location: `week2/day1/api`
 
 - `config/sequelize.js` initializes the Sequelize database connection.
 - `server.js` calls `sequelize.authenticate()` to verify database connectivity.
-- Sequelize models are defined for entities such as `User` and `Product`.
+- Sequelize models are defined for entities such as `User`, `Product`, and `Ticket`.
 - Sequelize migrations are used for schema changes.
+- The Ticket service uses the Sequelize models and their configured associations to retrieve and modify tickets.
 
 ### Tasks API — mysql2
 
@@ -171,7 +225,9 @@ The Sequelize models and raw SQL queries must remain compatible with the MySQL s
 
 The Products/Auth API uses Sequelize migrations for schema changes. The Tasks API performs database operations using raw SQL, so its queries depend directly on the deployed table and column definitions.
 
-Production schema changes must account for both APIs' database operations. `sequelize.sync({ force: true })` must not be used to reset the existing database because it can drop tables and delete data.
+Ticket schema changes must be applied through the appropriate database migration before deploying application code that depends on the changed fields or relationships.
+
+`sequelize.sync({ force: true })` must not be used to reset the existing production database because it can drop tables and delete data.
 
 ## Part 51: Database Migration Strategy
 
@@ -181,10 +237,11 @@ This project uses MySQL as its database, with two backend APIs accessing it thro
 
 **Products/Auth API**
 
-- Sequelize models define the structure of entities such as `User` and `Product`.
+- Sequelize models define the structure of entities such as `User`, `Product`, and `Ticket`.
 - Versioned Sequelize migration files are used to apply database schema changes.
 - Before deploying a code change that depends on a new or modified column, table, or constraint, the corresponding migration must be applied to the production database.
 - Migration status and the target database must be checked before applying changes.
+- Ticket schema changes must include any required changes to the Ticket table, its user references, and related constraints.
 
 **Tasks API**
 
@@ -198,13 +255,28 @@ Database migrations should run as a controlled deployment step, before the appli
 
 For the Products/Auth API, the configured Sequelize migrations are the mechanism for applying versioned schema changes. They should be checked and run against the intended database as part of deployment.
 
+For example, from the Products/Auth API directory:
+
+```bash
+cd week2/day1/api
+npx sequelize-cli db:migrate:status
+```
+
+Review the output and verify that the CLI points to the intended production database. Apply pending migrations only after confirming the target database and reviewing the migrations:
+
+```bash
+npx sequelize-cli db:migrate
+```
+
+These commands must be run with the production environment configured correctly. Do not run them against production accidentally from a local environment.
+
 The Tasks API's raw SQL queries do not automatically update the database schema. Any required schema changes must be applied separately.
 
 ### Why `sequelize.sync({ force: true })` Must Not Be Used
 
-The existing `fullstack_training` database must not be reset using `sequelize.sync({ force: true })`.
+The existing production database must not be reset using `sequelize.sync({ force: true })`.
 
-The `force: true` option drops existing tables before recreating them. This can delete stored users, products, tasks, and other existing data, and can disrupt foreign-key relationships.
+The `force: true` option drops existing tables before recreating them. This can delete stored users, products, tasks, tickets, and other existing data, and can disrupt foreign-key relationships.
 
 Versioned migrations and reviewed SQL schema changes provide a controlled way to update the schema without treating the production database as disposable.
 
@@ -218,6 +290,7 @@ Examples include:
 - Code expects a newly added table that has not been created.
 - A renamed or removed column causes older queries to fail.
 - A changed constraint rejects data that the application previously allowed.
+- The Ticket service expects a Creator or Assignee association that is missing or configured under a different alias.
 
 These failures can result in API errors, failed requests, or unavailable application features.
 
@@ -239,8 +312,8 @@ Production secrets must be configured through the hosting provider's environment
 
 Examples of sensitive environment variables used by this project include:
 
-- `DB_PASSWORD` — the password used to connect to the MySQL database.
-- `JWT_SECRET` — the secret used to sign and verify JSON Web Tokens.
+- `DB_PASSWORD` — The password used to connect to the MySQL database.
+- `JWT_SECRET` — The secret used to sign and verify JSON Web Tokens.
 
 Other environment variables can also contain environment-specific configuration and should be reviewed before deployment.
 
@@ -257,6 +330,9 @@ It must not contain real database passwords, JWT secrets, or other sensitive cre
 - Do not upload a real `.env` file as a deployment artifact.
 - Ensure the deployed application receives its configuration through the hosting environment.
 - If a secret is accidentally exposed, replace or rotate it as appropriate.
+
+The Ticket module uses the existing Products/Auth API JWT configuration. Do not introduce a frontend `VITE_` variable for `JWT_SECRET` or any other private backend secret.
+
 ## Part 53: CORS Configuration
 
 The backend APIs use the `FRONTEND_ORIGIN` environment variable to configure the allowed frontend origin.
@@ -273,7 +349,9 @@ Replace this placeholder with the real frontend origin when deploying the applic
 
 The Products/Auth API and Tasks API must allow requests from the deployed frontend origin. The configured origin must match the origin from which the browser loads the frontend.
 
-Wildcard CORS (`*`) must not be used for this authenticated production application. The production configuration should specify the intended frontend origin rather than allowing requests from every origin.
+Tickets use the Products/Auth API's CORS configuration because their routes are part of the same backend application. A separate Tickets CORS configuration is not required.
+
+Wildcard CORS (`*`) must not be used for this authenticated production application without a specific, justified requirement. The production configuration should specify the intended frontend origin.
 
 ## Part 54: Production Error Handling
 
@@ -289,13 +367,21 @@ Clients should receive safe, structured error responses that provide enough info
 
 The current application error handlers should be reviewed to confirm exactly what is returned for unexpected errors. Setting `NODE_ENV=production` alone is not proof that every internal error detail is hidden.
 
-After deployment, verify the responses for validation failures, missing resources, and unexpected server errors to confirm that the API returns the intended status codes and response format.
+After deployment, verify the responses for validation failures, missing resources, authentication failures, authorization failures, and unexpected server errors.
+
+For Tickets, verify that validation errors and permission failures return the expected HTTP status codes and safe response messages. Do not expose stack traces or private configuration through Ticket API responses.
+
 ## Part 55: Health Check
 
 Both backend APIs expose a health endpoint:
 
-- Products/Auth API: `GET http://localhost:3000/health`
-- Tasks API: `GET http://localhost:3001/health`
+- Products/Auth API: `GET /health` on port `3000`.
+- Tasks API: `GET /health` on port `3001`.
+
+For local development, these correspond to:
+
+- `http://localhost:3000/health`
+- `http://localhost:3001/health`
 
 The expected response is:
 
@@ -305,9 +391,11 @@ The expected response is:
 }
 ```
 
-During deployment, the health endpoint should be checked to confirm that the API responds successfully.
+During deployment, check the health endpoint to confirm that the API responds successfully.
 
 The basic health endpoint verifies application responsiveness. A successful response does not necessarily confirm that every dependency, such as MySQL, authentication, or the other backend API, is working correctly. Database connectivity and important application operations must be verified separately.
+
+Because Tickets are served by the Products/Auth API, the Products/Auth API health endpoint is the relevant initial health check for that module. Also verify Ticket operations against the deployed database.
 
 ## Part 56: Deployment Verification
 
@@ -318,12 +406,14 @@ After deploying the frontend and both backend APIs, verify the following items.
 - [ ] The React frontend loads from its deployed URL.
 - [ ] Direct frontend routes work, including `/`, `/products/new`, `/products/:id`, `/cart`, `/tasks`, `/tasks/new`, and `/tasks/:id`.
 - [ ] Refreshing a direct route works without returning a hosting-provider 404 error.
+- [ ] The Tickets list and detail interfaces load successfully.
 
 ### Backend APIs
 
 - [ ] The Products/Auth API starts and responds successfully.
 - [ ] The Tasks API starts and responds successfully.
 - [ ] `GET /health` returns HTTP `200` with the expected health response for both APIs.
+- [ ] Ticket requests reach the Products/Auth API rather than the Tasks API.
 
 ### Authentication and Authorization
 
@@ -332,7 +422,7 @@ After deploying the frontend and both backend APIs, verify the following items.
 - [ ] Invalid login credentials are rejected.
 - [ ] Authenticated requests use a valid JWT.
 - [ ] Expired or invalid JWTs are rejected.
-- [ ] Role-based access control (RBAC) blocks operations that the user's role is not permitted to perform.
+- [ ] Role-based access control blocks operations that the user's role is not permitted to perform.
 
 ### Products and Tasks
 
@@ -341,6 +431,25 @@ After deploying the frontend and both backend APIs, verify the following items.
 - [ ] Tasks load from the database and appear in the frontend.
 - [ ] Task creation, updates, and deletion work as expected.
 - [ ] Changes persist in MySQL after refreshing the frontend.
+
+### Tickets
+
+- [ ] The Ticket table exists in the production database.
+- [ ] The Ticket model and deployed database schema match.
+- [ ] The Creator and Assignee associations resolve correctly.
+- [ ] Authenticated users can retrieve the ticket list and ticket details.
+- [ ] Unauthenticated Ticket requests return `401 Unauthorized`.
+- [ ] Ticket creation stores the authenticated user's ID as `created_by`; the client cannot choose another creator by supplying a different value.
+- [ ] Ticket status and priority values are validated.
+- [ ] The ticket status filter returns matching tickets.
+- [ ] An assigned user can update ticket status when permitted by the backend rules.
+- [ ] An unassigned user cannot update another user's ticket.
+- [ ] An assigned non-admin user cannot modify fields beyond the permitted status update.
+- [ ] An admin can perform the Ticket operations allowed by the backend authorization rules.
+- [ ] A normal user cannot delete a ticket.
+- [ ] Ticket deletion is restricted to admins.
+- [ ] Validation and authorization errors return the expected status codes.
+- [ ] Ticket changes persist in the production database.
 
 ### Database and Configuration
 
@@ -361,11 +470,13 @@ After deploying the frontend and both backend APIs, verify the following items.
 
 - [ ] The frontend production build completes successfully with `npm run build`.
 - [ ] The frontend lint check passes with `npm run lint`, if the script is defined.
-- [ ] Automated tests pass where test scripts and tests are configured for the relevant project.
+- [ ] Backend tests pass using the configured test script.
+- [ ] Ticket authorization tests pass.
+- [ ] Frontend Ticket filtering and role-based UI tests pass.
 
 Mark each checklist item complete only after verifying it in the deployed application or through the relevant API, database, or automated check.
 
-### Failure 1: Incorrect DB_PASSWORD
+### Failure 1: Incorrect `DB_PASSWORD`
 
 **Change:** Temporarily replaced the Products/Auth API's database password with an incorrect value in `week2/day1/api/.env`.
 
@@ -383,7 +494,7 @@ The failure occurred when running `node server.js`, immediately during database 
 
 **Recovery:** Restored the original `DB_PASSWORD` and restarted the API.
 
-### Failure 3: Incorrect VITE_API_BASE_URL
+### Failure 2: Incorrect `VITE_API_BASE_URL`
 
 **Change:** Temporarily changed the frontend's `VITE_API_BASE_URL` from `http://localhost:3000/api` to `http://localhost:3999/api`.
 
