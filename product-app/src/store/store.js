@@ -5,16 +5,17 @@ import productsReducer from '../features/products/productsSlice'
 import cartReducer from '../features/cart/cartSlice'
 import tasksReducer from '../features/tasks/tasksSlice'
 import authReducer from '../features/auth/authSlice'
+import ticketsReducer from '../features/tickets/ticketsSlice'
+
 export const store = configureStore({
   reducer: {
     products: productsReducer,
     cart: cartReducer,
     tasks: tasksReducer,
-    auth: authReducer
-
-  }
+    auth: authReducer,
+    tickets: ticketsReducer,
+  },
 })
-
 
 //The architectural change was made to establish Redux as the single source of truth for shared product API state, including products, loading status, and API errors.
 // Previously, the useProducts custom hook managed this data. Keeping both useProducts and Redux's fetchProducts active could cause duplicate API requests and

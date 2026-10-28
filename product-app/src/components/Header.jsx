@@ -34,6 +34,14 @@ function Header() {
         {' | '}
         <Link to="/tasks/new">Create Task</Link>
         {' | '}
+        <Link to="/tickets">Tickets</Link>
+        {' | '}
+        {user && (
+          <>
+            <Link to="/tickets/new">Create Ticket</Link>
+            {' | '}
+          </>
+        )}
         <Link to="/cart">Cart Summary</Link>
         {' | '}
 
@@ -52,3 +60,4 @@ function Header() {
 }
 
 export default Header
+

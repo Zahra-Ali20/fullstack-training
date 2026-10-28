@@ -1,3 +1,4 @@
+
 import { render } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { configureStore } from '@reduxjs/toolkit'
@@ -10,11 +11,13 @@ import {
 import productsReducer from '../features/products/productsSlice'
 import cartReducer from '../features/cart/cartSlice'
 import authReducer from '../features/auth/authSlice'
+import ticketsReducer from '../features/tickets/ticketsSlice'
 
 const rootReducer = {
   products: productsReducer,
   cart: cartReducer,
   auth: authReducer,
+  tickets: ticketsReducer,
 }
 
 export function renderWithProviders(
@@ -50,7 +53,11 @@ export function renderWithProviders(
       children
     )
 
-    return <Provider store={testStore}>{content}</Provider>
+    return (
+      <Provider store={testStore}>
+        {content}
+      </Provider>
+    )
   }
 
   return {
