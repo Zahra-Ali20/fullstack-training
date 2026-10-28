@@ -1,9 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
+const ticketRoutes = require("./routes/ticketRoutes");
 const productRoutes = require("./routes/productRoutes");
 const errorHandler = require("./middleware/errorHandler");
-
 const app = express();
 
 const allowedOrigins = (
@@ -27,7 +27,7 @@ app.get("/health", (req, res) => {
 });
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
-
+app.use("/api/tickets", ticketRoutes);
 app.use(errorHandler);
 
 module.exports = app;

@@ -1,7 +1,8 @@
+
 const jwt = require("jsonwebtoken");
 const authService = require("../services/authService");
 
-const register = async (req, res) => {
+const register = async (req, res, next) => {
   try {
     const user = await authService.register({
       name: req.body.name,
@@ -19,21 +20,11 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    if (error.statusCode) {
-      return res.status(error.statusCode).json({
-        message: error.message,
-      });
-    }
-
-    console.error("Registration failed:", error.name || "Error");
-
-    return res.status(500).json({
-      message: "Internal server error",
-    });
+    return next(error);
   }
 };
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   try {
     const user = await authService.login({
       email: req.body.email.trim().toLowerCase(),
@@ -62,18 +53,9 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    if (error.statusCode) {
-      return res.status(error.statusCode).json({
-        message: error.message,
-      });
-    }
-
-    console.error("Login failed:", error.name || "Error");
-
-    return res.status(500).json({
-      message: "Internal server error",
-    });
+    return next(error);
   }
 };
 
 module.exports = { register, login };
+
